@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyCampus Planner</title>
+<style>
+body { font-family: Arial,sans-serif; margin:0; padding:0; transition: background-color 0.3s; }
+.light-mode { background:#f4f4f4; color:#333; }
+.dark-mode { background:#1b1f3b; color:#f4f4f4; }
+header { background:#203a70; color:white; padding:1rem; text-align:center; }
+nav { background:#152850; color:white; padding:.5rem; }
+nav ul { list-style:none; padding:0; display:flex; justify-content:center; flex-wrap:wrap; }
+nav li { margin:0 1rem; }
+nav a { color:white; text-decoration:none; }
+.hidden { display:none; }
+.container { padding:2rem; max-width:1200px; margin:auto; }
+button { width:100%; padding:.8rem; margin:.5rem 0; border-radius:8px; border:none; background:#203a70; color:white; cursor:pointer; }
+button:hover { background:#152850; }
+.auth-box { margin:3rem auto; padding:2rem; background:white; max-width:400px; border-radius:10px; box-shadow:0 2px 5px rgba(0,0,0,0.2); }
+input, textarea, select { width:100%; padding:.6rem; margin:.4rem 0; border-radius:6px; border:1px solid #ccc; }
+.dashboard { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1rem; margin-top:1rem; }
+.card { background:white; padding:1rem; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+.dark-mode .card { background:#2a3358; color:white; }
+.deadline-near { color:red; font-weight:bold; }
+.profile-img { border-radius:50%; width:100px; height:100px; object-fit:cover; }
+</style>
+</head>
+<body class="light-mode">
+
+<!-- LOGIN -->
+<div id="login-page" class="auth-box">
+<h2>Login</h2>
+<input id="login-username" type="text" placeholder="Username">
+<input id="login-password" type="password" placeholder="Password">
+<button id="btn-login">Masuk</button>
+<p style="text-align:center;">Belum punya akun? <a href="#" id="link-register">Daftar</a></p>
+</div>
+
+<!-- REGISTER -->
+<div id="register-page" class="auth-box hidden">
+<h2>Register</h2>
+<input id="reg-username" type="text" placeholder="Username">
+<input id="reg-password" type="password" placeholder="Password">
+<input id="reg-photo" type="text" placeholder="URL Foto Profil (Opsional)">
+<button id="btn-register">Daftar</button>
+<p style="text-align:center;">Sudah punya akun? <a href="#" id="link-login">Login</a></p>
+</div>
+
+<!-- MAIN APP -->
+<header id="main-header" class="hidden">
+<h1>MyCampus Planner</h1>
+<p>Website Pengelola Aktivitas Akademik dan Harian Mahasiswa</p>
+<button id="theme-toggle">Toggle Dark Mode</button>
+</header>
+
+<nav id="main-nav" class="hidden">
+<ul>
+<li><a href="#" data-section="dashboard">Dashboard</a></li>
+<li><a href="#" data-section="profile">Profil</a></li>
+<li><a href="#" data-section="courses">Mata Kuliah</a></li>
+<li><a href="#" data-section="assignments">Upload Tugas</a></li>
+<li><a href="#" data-section="deadlines">Jadwal Deadline</a></li>
+<li><a href="#" data-section="schedule">Jadwal Makan & Istirahat</a></li>
+</ul>
+</nav>
+
+<div class="container hidden" id="main-container">
+<!-- DASHBOARD -->
+<section id="dashboard">
+<h2>Dashboard Utama</h2>
+<div class="dashboard">
+<div class="card"><h3>Mata Kuliah Hari Ini</h3><p id="today-courses">Tidak ada kuliah hari ini.</p></div>
+<div class="card"><h3>Deadline</h3><ul id="deadline-notifications"></ul></div>
+<div class="card"><h3>Status Upload Tugas</h3><ul id="assignment-status"></ul></div>
+</div>
+</section>
+
+<!-- PROFIL -->
+<section id="profile" class="hidden">
+<h2>Profil Mahasiswa</h2>
+<img id="profile-img" class="profile-img" src="https://via.placeholder.com/100" alt="Foto Profil">
+<p>Username: <span id="profile-user"></span></p>
+<p>Nama: <span id="student-name">Nama Mahasiswa</span></p>
+<p>NIM: <span id="student-nim">12345678</span></p>
+<p>Jurusan: <span id="student-major">Teknik Informatika</span></p>
+<button id="edit-profile">Edit Profil</button>
+</section>
+
+<!-- MATA KULIAH -->
+<section id="courses" class="hidden">
+<h2>Mata Kuliah</h2>
+<button id="add-course">Tambah Mata Kuliah</button>
+<ul id="course-list"></ul>
+</section>
+
+<!-- UPLOAD TUGAS -->
+<section id="assignments" class="hidden">
+<h2>Upload Tugas</h2>
+<select id="course-select"><option value="">Pilih Mata Kuliah</option></select>
+<input type="file" id="file-upload">
+<textarea id="desc" placeholder="Deskripsi"></textarea>
+<button id="upload-btn">Upload</button>
+<ul id="uploaded-assignments"></ul>
+</section>
+
+<!-- DEADLINES -->
+<section id="deadlines" class="hidden">
+<h2>Jadwal Deadline</h2>
+<button id="add-deadline">Tambah Deadline</button>
+<ul id="deadline-list"></ul>
+</section>
+
+<!-- JADWAL MAKAN/ISTIRAHAT -->
+<section id="schedule" class="hidden">
+<h2>Jadwal Makan & Istirahat</h2>
+<button id="add-meal">Tambah Jadwal Makan</button>
+<ul id="meal-list"></ul>
+<button id="add-break">Tambah Jadwal Istirahat</button>
+<ul id="break-list"></ul>
+<div id="timer" class="hidden">00:00:00</div>
+<button id="start-timer">Mulai Timer</button>
+</section>
+
+</div>
+
+<script>
+/* ===== LOGIN & REGISTER ===== */
+const loginPage = document.getElementById('login-page');
+const registerPage = document.getElementById('register-page');
+const mainHeader = document.getElementById('main-header');
+const mainNav = document.getElementById('main-nav');
+const mainContainer = document.getElementById('main-container');
+const profileUser = document.getElementById('profile-user');
+const profileImg = document.getElementById('profile-img');
+
+document.getElementById('link-register').onclick = ()=>{loginPage.classList.add('hidden'); registerPage.classList.remove('hidden');}
+document.getElementById('link-login').onclick = ()=>{registerPage.classList.add('hidden'); loginPage.classList.remove('hidden');}
+
+document.getElementById('btn-register').onclick = ()=>{
+    const u = document.getElementById('reg-username').value.trim();
+    const p = document.getElementById('reg-password').value.trim();
+    const photo = document.getElementById('reg-photo').value.trim() || "https://via.placeholder.com/100";
+    if(!u||!p){alert('Lengkapi data!'); return;}
+    let users = JSON.parse(localStorage.getItem('users')||'[]');
+    if(users.find(x=>x.username===u)){alert('Username sudah digunakan!'); return;}
+    users.push({username:u,password:p,profile:{name:u,nim:'12345678',major:'Teknik Informatika',photo}});
+    localStorage.setItem('users',JSON.stringify(users));
+    alert('Akun berhasil dibuat! Silakan login.');
+    registerPage.classList.add('hidden'); loginPage.classList.remove('hidden');
+}
+
+document.getElementById('btn-login').onclick = ()=>{
+    const u = document.getElementById('login-username').value.trim();
+    const p = document.getElementById('login-password').value.trim();
+    let users = JSON.parse(localStorage.getItem('users')||'[]');
+    let match = users.find(x=>x.username===u && x.password===p);
+    if(!match){alert('Username atau password salah!'); return;}
+    localStorage.setItem('loggedInUser',u);
+    showApp();
+    updateProfile(match.profile);
+}
+
+function showApp(){
+    loginPage.classList.add('hidden');
+    registerPage.classList.add('hidden');
+    mainHeader.classList.remove('hidden');
+    mainNav.classList.remove('hidden');
+    mainContainer.classList.remove('hidden');
+    profileUser.textContent = localStorage.getItem('loggedInUser');
+}
+
+// Auto login
+window.onload = function(){
+    const u = localStorage.getItem('loggedInUser');
+    if(u){
+        let users = JSON.parse(localStorage.getItem('users')||'[]');
+        let match = users.find(x=>x.username===u);
+        showApp();
+        if(match) updateProfile(match.profile);
+    }
+}
+
+/* ===== PROFILE ===== */
+document.getElementById('edit-profile').onclick = ()=>{
+    let users = JSON.parse(localStorage.getItem('users')||'[]');
+    let u = localStorage.getItem('loggedInUser');
+    let match = users.find(x=>x.username===u);
+    if(!match) return;
+    let newUsername = prompt("Username:", u);
+    if(newUsername !== null && newUsername.trim() !== ''){
+        if(users.find(x=>x.username===newUsername.trim() && x.username !== u)){
+            alert('Username sudah digunakan!');
+            return;
+        }
+        match.username = newUsername.trim();
+        localStorage.setItem('loggedInUser', newUsername.trim());
+        profileUser.textContent = newUsername.trim();
+    }
+    let name = prompt("Nama:", match.profile.name);
+    let nim = prompt("NIM:", match.profile.nim);
+    let major = prompt("Jurusan:", match.profile.major);
+    let photo = prompt("URL Foto Profil:", match.profile.photo);
+    if (name !== null) match.profile.name = name;
+    if (nim !== null) match.profile.nim = nim;
+    if (major !== null) match.profile.major = major;
+    if (photo !== null) match.profile.photo = photo;
+    localStorage.setItem('users', JSON.stringify(users));
+    updateProfile(match.profile);
+}
+
+function updateProfile(p){
+    document.getElementById('student-name').textContent=p.name;
+    document.getElementById('student-nim').textContent=p.nim;
+    document.getElementById('student-major').textContent=p.major;
+    profileImg.src = p.photo || "https://via.placeholder.com/100";
+}
+
+/* ===== NAVIGATION ===== */
+document.querySelectorAll('#main-nav a').forEach(a=>{
+    a.onclick=e=>{
+        e.preventDefault();
+        document.querySelectorAll('section').forEach(s=>s.classList.add('hidden'));
+        let sec = document.getElementById(a.dataset.section);
+        if(sec) sec.classList.remove('hidden');
+    }
+});
+
+/* ===== COURSES ===== */
+let courses = JSON.parse(localStorage.getItem('courses')||'[]');
+function updateCourses(){
+    const list = document.getElementById('course-list');
+    const select = document.getElementById('course-select');
+    list.innerHTML = courses.map((c,i)=>`<li>${c.name} - ${c.schedule} <button onclick="editCourse(${i})">Edit</button></li>`).join('');
+    select.innerHTML = '<option value="">Pilih Mata Kuliah</option>'+courses.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+}
+updateCourses();
+
+document.getElementById('add-course').onclick = ()=>{
+    let name = prompt("Nama Mata Kuliah:");
+    let schedule = prompt("Jadwal (Senin 08:00):");
+    if(name && schedule){ courses.push({name,schedule}); localStorage.setItem('courses',JSON.stringify(courses)); updateCourses();}
+}
+function editCourse(i){
+    let c = courses[i];
+    let name = prompt("Nama:",c.name);
+    let schedule = prompt("Jadwal:",c.schedule);
+    if(name && schedule){ courses[i]={name,schedule}; localStorage.setItem('courses',JSON.stringify(courses)); updateCourses();}
+}
+
+/* ===== DEADLINES ===== */
+let deadlines = JSON.parse(localStorage.getItem('deadlines')||'[]');
+function updateDeadlines(){
+    const list = document.getElementById('deadline-list');
+    list.innerHTML = deadlines.map((d,i)=>{
+        let status="";
+        if(d.date && new Date(d.date) < new Date()) status=" <span class='deadline-near'>[Terlambat]</span>";
+        return `<li>${d.course} - ${d.date}${status} 
+        <button onclick="editDeadline(${i})">Edit</button>
+        <button onclick="deleteDeadline(${i})">Hapus</button></li>`;
+    }).join('');
+}
+updateDeadlines();
+
+document.getElementById('add-deadline').onclick = ()=>{
+    let course = prompt("Mata Kuliah:");
+    let date = prompt("Tanggal (YYYY-MM-DD):");
+    if(course && date){ deadlines.push({course,date}); localStorage.setItem('deadlines',JSON.stringify(deadlines)); updateDeadlines();}
+}
+
+function editDeadline(i){
+    let d = deadlines[i];
+    let course = prompt("Mata Kuliah:",d.course);
+    let date = prompt("Tanggal (YYYY-MM-DD):",d.date);
+    if(course && date){ deadlines[i]={course,date}; localStorage.setItem('deadlines',JSON.stringify(deadlines)); updateDeadlines();}
+}
+function deleteDeadline(i){
+    if(confirm("Hapus deadline ini?")){
+        deadlines.splice(i,1);
+        localStorage.setItem('deadlines',JSON.stringify(deadlines));
+        updateDeadlines();
+    }
+}
+
+/* ===== UPLOAD ===== */
+let assignments = JSON.parse(localStorage.getItem('assignments')||'[]');
+function updateAssignments(){
+    document.getElementById('uploaded-assignments').innerHTML = assignments.map(a=>`<li>${a.course}: ${a.file} - ${a.desc}</li>`).join('');
+}
+updateAssignments();
+
+document.getElementById('upload-btn').onclick = ()=>{
+    let course = document.getElementById('course-select').value;
+    let fileInput = document.getElementById('file-upload');
+    let desc = document.getElementById('desc').value;
+    if(course && fileInput.files[0]){
+        assignments.push({course,file:fileInput.files[0].name,desc});
+        localStorage.setItem('assignments',JSON.stringify(assignments));
+        updateAssignments();
+    }
+}
+
+/* ===== MEAL / BREAK / TIMER ===== */
+let meals = JSON.parse(localStorage.getItem('meals')||'[]');
+let breaks = JSON.parse(localStorage.getItem('breaks')||'[]');
+
+document.getElementById('add-meal').onclick = ()=>{
+    let time = prompt("Waktu Makan (HH:MM):");
+    if(time){ meals.push(time); localStorage.setItem('meals',JSON.stringify(meals)); updateMeals();}
+}
+document.getElementById('add-break').onclick = ()=>{
+    let time = prompt("Waktu Istirahat (HH:MM):");
+    if(time){ breaks.push(time); localStorage.setItem('breaks',JSON.stringify(breaks)); updateBreaks();}
+}
+function updateMeals(){ document.getElementById('meal-list').innerHTML = meals.map(m=>`<li>${m}</li>`).join(''); }
+function updateBreaks(){ document.getElementById('break-list').innerHTML = breaks.map(b=>`<li>${b}</li>`).join(''); }
+updateMeals(); updateBreaks();
+
+/* ===== TIMER ===== */
+let timerInterval;
+document.getElementById('start-timer').onclick = ()=>{
+    document.getElementById('timer').classList.remove('hidden');
+    let time = 0;
+    clearInterval(timerInterval);
+    timerInterval=setInterval(()=>{
+        time++;
+        let h = String(Math.floor(time/3600)).padStart(2,'0');
+        let m = String(Math.floor(time%3600/60)).padStart(2,'0');
+        let s = String(time%60).padStart(2,'0');
+        document.getElementById('timer').textContent = `${h}:${m}:${s}`;
+    },1000);
+}
+
+/* ===== THEME ===== */
+document.getElementById('theme-toggle').onclick = ()=>{
+    document.body.classList.toggle('dark-mode');
+    document.body.classList.toggle('light-mode');
+}
+</script>
+
+</body>
+</html>
